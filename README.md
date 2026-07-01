@@ -41,11 +41,35 @@ flowchart TD
 
 ---
 
+## Deployment strategy
+
+Models are promoted through environments — **development → staging → production** — with an approval gate guarding each step, rather than being pushed straight to production. This is enforced through the model registry's approval status.
+
+```mermaid
+flowchart TD
+    A["Development<br/>train + register version"] --> B{"Automated checks<br/>eval metrics, unit tests"}
+    B -->|pass| C["Staging<br/>deploy to test endpoint"]
+    B -->|fail| A
+    C --> D{"Manual approval<br/>reviewer signs off"}
+    D -->|approved| E["Production<br/>live endpoint + batch"]
+    D -->|rejected| A
+```
+
+- **Development** — a freshly trained model is registered as a new version (status: pending).
+- **Automated checks** — a machine gate: the model must clear minimum precision/recall thresholds and pass unit tests before advancing.
+- **Staging** — the model is deployed to a real but non-customer-facing endpoint and tested with live-like traffic.
+- **Manual approval** — a human gate: a reviewer explicitly signs off before the model reaches real customers (often required in regulated domains like fraud).
+- **Production** — the approved version serves real transactions via the real-time endpoint and batch jobs.
+
+Because every version is preserved in the registry, a failed gate sends the model back to development for a fix and a new version, and **rollback** is simply re-pointing production at the previous approved version.
+
+---
+
 ## Tech stack
 
 | Area | Tools |
 |---|---|
-| Language | Python 3.12 |
+| Language | Python 3.13 |
 | ML | scikit-learn, XGBoost, pandas, NumPy |
 | Experiment tracking | MLflow (local + AWS-managed) |
 | Cloud / MLOps | AWS SageMaker (Training Jobs, Model Registry, Endpoints, Batch Transform, Pipelines), Amazon S3 |
